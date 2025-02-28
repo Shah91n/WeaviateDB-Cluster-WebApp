@@ -21,37 +21,41 @@ st.set_page_config(
 navigate()
 
 # Connect to Weaviate
-st.sidebar.title("Weaviate Connection 🔗")
-use_local = st.sidebar.checkbox("Local Cluster", value=False)
-
-if use_local:
-	st.sidebar.info("Local Weaviate should be at http://localhost:8080")
-	st.sidebar.warning("This option requires cloning the repository from **Shah91n** GitHub and following the installation requirements. Then ensure that you have a local Weaviate instance running on your machine before attempting to connect.")
-	cluster_endpoint = "http://localhost:8080"
-	cluster_api_key = ""
+if not st.session_state.get("client_ready"):
+	st.sidebar.title("Weaviate Connection 🔗")
 else:
-	cluster_endpoint = st.sidebar.text_input(
-		"Cloud Cluster Endpoint", placeholder="Enter Cluster Endpoint (URL)", value = st.session_state.get("cluster_endpoint")
-	)
-	cluster_api_key = st.sidebar.text_input(
-		"Cloud Cluster API Key", placeholder="Enter Cluster Admin Key", type="password", value = st.session_state.get("cluster_api_key")
-	)
-
-if st.sidebar.button("Connect", use_container_width=True, type="secondary"):
-	clear_session_state()
+	st.sidebar.title("Connected ✅")
+if not st.session_state.get("client_ready"):
+	use_local = st.sidebar.checkbox("Local Cluster", value=False)
 	if use_local:
-		if initialize_client(cluster_endpoint, cluster_api_key, use_local=True):
-			st.sidebar.success("Connected to local successfully!")
-		else:
-			st.sidebar.error("Connection failed!")
+		st.sidebar.info("Local Weaviate should be at http://localhost:8080")
+		st.sidebar.html("⚠️ For local access, <a href='https://github.com/Shah91n/WeaviateCluster'>clone this repo in GitHub</a> and follow the installation requirements. Then ensure that you have a <a href='https://weaviate.io/developers/weaviate/installation/docker-compose'>local Weaviate instance running</a> on your machine before attempting to connect.")
+		cluster_endpoint = "http://localhost:8080"
+		cluster_api_key = ""
 	else:
-		if not cluster_endpoint or not cluster_api_key:
-			st.sidebar.error("Please insert the cluster endpoint and API key!")
-		else:
-			if initialize_client(cluster_endpoint, cluster_api_key, use_local=False):
-				st.sidebar.success("Connected successfully!")
+		cluster_endpoint = st.sidebar.text_input(
+			"Cloud Cluster Endpoint", placeholder="Enter Cluster Endpoint (URL)", value = st.session_state.get("cluster_endpoint")
+		)
+		cluster_api_key = st.sidebar.text_input(
+			"Cloud Cluster API Key", placeholder="Enter Cluster Admin Key", type="password", value = st.session_state.get("cluster_api_key")
+		)
+
+	if st.sidebar.button("Connect", use_container_width=True, type="secondary"):
+		clear_session_state()
+		if use_local:
+			if initialize_client(cluster_endpoint, cluster_api_key, use_local=True):
+				st.session_state.se = True
+				st.sidebar.success("Connected to local successfully!")
 			else:
 				st.sidebar.error("Connection failed!")
+		else:
+			if not cluster_endpoint or not cluster_api_key:
+				st.sidebar.error("Please insert the cluster endpoint and API key!")
+			else:
+				if initialize_client(cluster_endpoint, cluster_api_key, use_local=False):
+					st.sidebar.success("Connected successfully!")
+				else:
+					st.sidebar.error("Connection failed!")
 
 if st.sidebar.button("Disconnect", use_container_width=True, type="primary"):
 	if st.session_state.get("client_ready"):
@@ -82,11 +86,11 @@ button_actions = {
 	"nodes": action_nodes_and_shards,
 	"aggregate_collections_tenants": action_aggregate_collections_tenants,
 	"collection_properties": action_schema,
-	"collections_configuration": lambda: action_collections_configuration(cluster_endpoint, cluster_api_key),
-	"statistics": lambda: action_statistics(cluster_endpoint, cluster_api_key),
-	"metadata": lambda: action_metadata(cluster_endpoint, cluster_api_key),
+	"collections_configuration": lambda: action_collections_configuration(st.session_state.cluster_endpoint, st.session_state.cluster_api_key),
+	"statistics": lambda: action_statistics(st.session_state.cluster_endpoint, st.session_state.cluster_api_key),
+	"metadata": lambda: action_metadata(st.session_state.cluster_endpoint, st.session_state.cluster_api_key),
 	"check_shard_consistency": action_check_shard_consistency,
-	"read_repairs": lambda: action_read_repairs(cluster_endpoint, cluster_api_key),
+	"read_repairs": lambda: action_read_repairs(st.session_state.cluster_endpoint, st.session_state.cluster_api_key),
 }
 
 with col1:
