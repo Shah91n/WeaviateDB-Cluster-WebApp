@@ -153,7 +153,7 @@ This will start the Weaviate Cluster, and you can access it by navigating to `ht
 
 This is a personal project and is not officially approved by the Weaviate organization. While functional, the code may not follow all best practices for Python programming or Streamlit. Suggestions and improvements are welcome!
 
-**USE AT YOUR OWN RISK**: While this tool is designed for cluster operation and analysis, there is always a possibility of unknown bugs. However, this tool is intended for read-only operations.
+**USE AT YOUR OWN RISK**: While this tool is designed for cluster operation and analysis, there is always a possibility of unknown bugs.
 
 ### Contributing
 
