@@ -1,5 +1,6 @@
 import streamlit as st
-from utils.search.hybrid import hybrid_search
+from utils.search.hybrid import hybrid_search, hybrid_search_with_multiple_vectors
+from utils.search.vector import vector_search, vector_search_with_multiple_vectors, parse_vector_input
 from utils.search.keyword import keyword_search
 from utils.cluster.collection import list_collections
 from utils.page_config import set_custom_page_config
@@ -20,6 +21,8 @@ def initialize_session_state():
 		st.session_state.search_limit = 3
 	if 'search_type' not in st.session_state:
 		st.session_state.search_type = "Hybrid"
+	if 'selected_target_vector' not in st.session_state:
+		st.session_state.selected_target_vector = None
 
 # Display the search interface with parameter
 def display_search_interface():
@@ -33,19 +36,36 @@ def display_search_interface():
 		help="Choose a collection to search in"
 	)
 
+	# Get the collection and check if the collection has named vectors
+	collection = st.session_state.client.collections.get(selected_collection)
+	collection_config = collection.config.get()
+	target_vector = None
+	# Only show target vector selection if collection has named vectors
+	if collection_config.vector_config is not None and len(collection_config.vector_config) > 0:
+		vector_names = list(collection_config.vector_config.keys())
+		target_vector = st.selectbox(
+			"Select Target Vector",
+			options=vector_names,
+			index=0,
+			help="Choose which named vector to search"
+		)
+		st.session_state.selected_target_vector = target_vector
+	else:
+		st.session_state.selected_target_vector = None
+
 	# Search type selection
 	search_type = st.radio(
 		"Search Type",
-		options=["Hybrid", "Keyword"],
+		options=["Hybrid", "Keyword", "Vector"],
 		horizontal=True,
 		help="Choose between hybrid (vector + keyword) or keyword-only search"
 	)
 
 	# Search parameters
 	query = st.text_input(
-		"Search Query",
+		"Search Query/Vector",
 		value=st.session_state.search_query,
-		help="Enter your search query"
+		help="Enter your search query/vector (for vector search, use a comma-separated list of floats like: 0.1,0.2,0.3)"
 	)
 
 	col1, col2 = st.columns(2)
@@ -75,6 +95,7 @@ def display_search_interface():
 	if search_button:
 		# Update session state
 		st.session_state.selected_collection = selected_collection
+		st.session_state.selected_target_vector = target_vector
 		st.session_state.search_query = query
 		st.session_state.search_type = search_type
 		if search_type == "Hybrid":
@@ -83,13 +104,45 @@ def display_search_interface():
 
 		# Perform search based on type
 		if search_type == "Hybrid":
-			success, message, df, time_taken = hybrid_search(
-				st.session_state.client,
-				selected_collection,
-				query,
-				alpha,
-				limit
+			if st.session_state.selected_target_vector:
+				success, message, df, time_taken = hybrid_search_with_multiple_vectors(
+					st.session_state.client,
+					selected_collection,
+					target_vector,
+					query,
+					alpha,
+					limit
+				)
+			else:
+				success, message, df, time_taken = hybrid_search(
+					st.session_state.client,
+					selected_collection,
+					query,
+					alpha,
+					limit
 			)
+		elif search_type == "Vector":
+			try:
+				vector_list = parse_vector_input(query)
+				
+				if st.session_state.selected_target_vector:
+					success, message, df, time_taken = vector_search_with_multiple_vectors(
+						st.session_state.client,
+						selected_collection,
+						target_vector,
+						vector_list,
+						limit
+					)
+				else:
+					success, message, df, time_taken = vector_search(
+						st.session_state.client,
+						selected_collection,
+						vector_list,
+						limit
+					)
+			except ValueError as e:
+				st.error(f"Invalid vector format: {e}")
+				return
 		else:
 			success, message, df, time_taken = keyword_search(
 				st.session_state.client,

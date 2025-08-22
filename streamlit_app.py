@@ -116,7 +116,7 @@ if not st.session_state.client_ready:
 			placeholder="Enter Cluster Admin Key",
 			type="password",
 			key="local_api_key"
-		).strip()
+		)
 
 	elif st.session_state.use_custom:
 		st.sidebar.markdown(
@@ -126,7 +126,7 @@ if not st.session_state.client_ready:
 			"Custom HTTP Host",
 			placeholder="e.g., localhost",
 			key="custom_http_host"
-		).strip()
+		)
 		st.sidebar.number_input(
 			"Custom HTTP Port",
 			value=st.session_state.custom_http_port,
@@ -136,7 +136,7 @@ if not st.session_state.client_ready:
 			"Custom gRPC Host",
 			placeholder="e.g., localhost",
 			key="custom_grpc_host"
-		).strip()
+		)
 		st.sidebar.number_input(
 			"Custom gRPC Port",
 			value=st.session_state.custom_grpc_port,
@@ -151,7 +151,7 @@ if not st.session_state.client_ready:
 			placeholder="Enter Cluster Admin Key",
 			type="password",
 			key="custom_api_key"
-		).strip()
+		)
 
 	else: # Cloud connection
 		st.sidebar.markdown(
@@ -161,13 +161,13 @@ if not st.session_state.client_ready:
 			"Cloud Cluster Endpoint",
 			placeholder="Enter Cluster Endpoint (URL)",
 			key="cloud_endpoint"
-		).strip()
+		)
 		st.sidebar.text_input(
 			"Cloud Cluster API Key",
 			placeholder="Enter Cluster Admin Key",
 			type="password",
 			key="cloud_api_key"
-		).strip()
+		)
 
 	# --------------------------------------------------------------------------
 	# Vectorizers Integration API Keys Section
@@ -279,6 +279,8 @@ update_side_bar_labels()
 # --------------------------------------------------------------------------
 st.markdown("###### ⚠️ Important: This tool is designed and tested on the latest Weaviate DB version. Some features may not be compatible with older versions. Please ensure you are using the latest stable version of Weaviate DB for optimal performance.")
 st.markdown("###### Any function with (APIs) means it is run using RESTful endpoints. Otherwise, it is executed through the DB client.")
+st.markdown("Aggregation & Read Data is cached in the session state for an hour - to clear the cache either clear the cache in the Streamlit Developer Options or Disconnect then reconnect again.")
+
 # --------------------------------------------------------------------------
 # Buttons (calls a function)
 # --------------------------------------------------------------------------

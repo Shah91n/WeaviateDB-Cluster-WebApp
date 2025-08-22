@@ -59,6 +59,7 @@ Interact with and manage Weaviate Cluster operations. This app provides tools to
 - **Search**
   - Hybrid search combining vector and keyword capabilities
   - Keyword search (BM25) for exact matches
+  - Vector Search for similarity
   - Adjustable alpha parameter (0.0-1.0) for hybrid search balance
   - Performance metrics
   - Detailed result metadata (scores, distances, timing)
