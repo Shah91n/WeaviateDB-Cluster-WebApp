@@ -11,125 +11,125 @@ def get_collection_config(client, collection_name):
 	except Exception as e:
 		raise Exception(f"Failed to get collection configuration: {str(e)}")
 
-# Update the configuration of a collection (all mutable params)
-def update_collection_config(client, collection_name, config_updates):
-	print(f"update_collection_config is called")
+# --- Sectioned update helpers ---
+
+def update_description_and_inverted_index(client, collection_name, description, bm25_b, bm25_k1, cleanup_interval_seconds, stopwords_preset, stopwords_additions, stopwords_removals):
+	print(f"update_description_and_inverted_index is called")
 	try:
 		collection = client.collections.get(collection_name)
 		update_config = {}
-
-		# Description update
-		if 'description' in config_updates:
-			update_config['description'] = config_updates['description']
-
-		# Inverted Index Config
-		inverted_config_updates = {}
-		if any(key in config_updates for key in ['bm25_b', 'bm25_k1', 'cleanup_interval_seconds', 'stopwords_additions', 'stopwords_preset', 'stopwords_removals']):
-			if 'bm25_b' in config_updates:
-				inverted_config_updates['bm25_b'] = config_updates['bm25_b']
-			if 'bm25_k1' in config_updates:
-				inverted_config_updates['bm25_k1'] = config_updates['bm25_k1']
-			if 'cleanup_interval_seconds' in config_updates:
-				inverted_config_updates['cleanup_interval_seconds'] = config_updates['cleanup_interval_seconds']
-			if 'stopwords_additions' in config_updates:
-				additions_str = config_updates['stopwords_additions']
-				inverted_config_updates['stopwords_additions'] = [item.strip() for item in additions_str.split(',') if item.strip()]
-			if 'stopwords_preset' in config_updates:
-				inverted_config_updates['stopwords_preset'] = config_updates['stopwords_preset']
-			if 'stopwords_removals' in config_updates:
-				removals_str = config_updates['stopwords_removals']
-				inverted_config_updates['stopwords_removals'] = [item.strip() for item in removals_str.split(',') if item.strip()]
-			if inverted_config_updates:
-				update_config['inverted_index_config'] = Reconfigure.inverted_index(**inverted_config_updates)
-
-		# Multi-Tenancy Config
-		multi_tenancy_config_updates = {}
-		if any(key in config_updates for key in ['auto_tenant_creation', 'auto_tenant_activation']):
-			if 'auto_tenant_creation' in config_updates:
-				multi_tenancy_config_updates['auto_tenant_creation'] = config_updates['auto_tenant_creation']
-			if 'auto_tenant_activation' in config_updates:
-				multi_tenancy_config_updates['auto_tenant_activation'] = config_updates['auto_tenant_activation']
-			if multi_tenancy_config_updates:
-				update_config['multi_tenancy_config'] = Reconfigure.multi_tenancy(**multi_tenancy_config_updates)
-
-		# Replication Config
-		replication_config_updates = {}
-		if any(key in config_updates for key in ['async_enabled', 'deletion_strategy']):
-			if 'async_enabled' in config_updates:
-				replication_config_updates['async_enabled'] = config_updates['async_enabled']
-			if 'deletion_strategy' in config_updates:
-				val = config_updates['deletion_strategy']
-				if isinstance(val, ReplicationDeletionStrategy):
-					replication_config_updates['deletion_strategy'] = val
-				elif isinstance(val, str) and hasattr(ReplicationDeletionStrategy, val):
-					replication_config_updates['deletion_strategy'] = getattr(ReplicationDeletionStrategy, val)
-				else:
-					raise Exception(f"Invalid ReplicationDeletionStrategy: {val}")
-			if replication_config_updates:
-				update_config['replication_config'] = Reconfigure.replication(**replication_config_updates)
-
-		# HNSW Vector Index Config (with PQ quantizer only)
-		hnsw_params = {}
-		if 'dynamic_ef_factor' in config_updates:
-			hnsw_params['dynamic_ef_factor'] = config_updates['dynamic_ef_factor']
-		if 'dynamic_ef_min' in config_updates:
-			hnsw_params['dynamic_ef_min'] = config_updates['dynamic_ef_min']
-		if 'dynamic_ef_max' in config_updates:
-			hnsw_params['dynamic_ef_max'] = config_updates['dynamic_ef_max']
-		if 'filter_strategy' in config_updates:
-			val = config_updates['filter_strategy']
-			if isinstance(val, VectorFilterStrategy):
-				hnsw_params['filter_strategy'] = val
-			elif isinstance(val, str) and hasattr(VectorFilterStrategy, val):
-				hnsw_params['filter_strategy'] = getattr(VectorFilterStrategy, val)
-			else:
-				raise Exception(f"Invalid VectorFilterStrategy: {val}")
-		if 'flat_search_cutoff' in config_updates:
-			hnsw_params['flat_search_cutoff'] = config_updates['flat_search_cutoff']
-		if 'vector_cache_max_objects' in config_updates:
-			hnsw_params['vector_cache_max_objects'] = config_updates['vector_cache_max_objects']
-
-		# PQ quantizer params (only PQ is mutable)
-		pq_keys = ['pq_enabled', 'pq_centroids', 'pq_segments', 'pq_training_limit', 'pq_encoder_type', 'pq_encoder_distribution']
-		pq_present = any(k in config_updates for k in pq_keys)
-		pq_config = None
-		if pq_present:
-			pq_kwargs = {}
-			if 'pq_enabled' in config_updates:
-				pq_kwargs['enabled'] = config_updates['pq_enabled']
-			if 'pq_centroids' in config_updates:
-				pq_kwargs['centroids'] = config_updates['pq_centroids']
-			if 'pq_segments' in config_updates:
-				pq_kwargs['segments'] = config_updates['pq_segments']
-			if 'pq_training_limit' in config_updates:
-				pq_kwargs['training_limit'] = config_updates['pq_training_limit']
-			if 'pq_encoder_type' in config_updates:
-				val = config_updates['pq_encoder_type']
-				if isinstance(val, PQEncoderType):
-					pq_kwargs['encoder_type'] = val
-				elif isinstance(val, str) and hasattr(PQEncoderType, val):
-					pq_kwargs['encoder_type'] = getattr(PQEncoderType, val)
-				else:
-					raise Exception(f"Invalid PQEncoderType: {val}")
-			if 'pq_encoder_distribution' in config_updates:
-				val = config_updates['pq_encoder_distribution']
-				if isinstance(val, PQEncoderDistribution):
-					pq_kwargs['encoder_distribution'] = val
-				elif isinstance(val, str) and hasattr(PQEncoderDistribution, val):
-					pq_kwargs['encoder_distribution'] = getattr(PQEncoderDistribution, val)
-				else:
-					raise Exception(f"Invalid PQEncoderDistribution: {val}")
-			pq_config = Reconfigure.VectorIndex.Quantizer.pq(**pq_kwargs)
-			hnsw_params['quantizer'] = pq_config
-
-		if hnsw_params:
-			update_config['vectorizer_config'] = Reconfigure.VectorIndex.hnsw(**hnsw_params)
-
+		if description is not None:
+			update_config['description'] = description
+		inverted_kwargs = {}
+		if bm25_b is not None:
+			inverted_kwargs['bm25_b'] = bm25_b
+		if bm25_k1 is not None:
+			inverted_kwargs['bm25_k1'] = bm25_k1
+		if cleanup_interval_seconds is not None:
+			inverted_kwargs['cleanup_interval_seconds'] = cleanup_interval_seconds
+		if stopwords_additions is not None:
+			inverted_kwargs['stopwords_additions'] = [item.strip() for item in stopwords_additions.split(',') if item.strip()]
+		if stopwords_preset is not None:
+			inverted_kwargs['stopwords_preset'] = stopwords_preset
+		if stopwords_removals is not None:
+			inverted_kwargs['stopwords_removals'] = [item.strip() for item in stopwords_removals.split(',') if item.strip()]
+		if inverted_kwargs:
+			update_config['inverted_index_config'] = Reconfigure.inverted_index(**inverted_kwargs)
 		if update_config:
 			collection.config.update(**update_config)
 		return True
 	except Exception as e:
-		raise Exception(f"Failed to update collection configuration: {str(e)}")
+		raise Exception(f"Failed to update description/inverted index: {str(e)}")
+
+def update_multi_tenancy_and_replication(client, collection_name, auto_tenant_creation, auto_tenant_activation, async_enabled, deletion_strategy):
+	print(f"update_multi_tenancy_and_replication is called")
+	try:
+		collection = client.collections.get(collection_name)
+		update_config = {}
+		multi_kwargs = {}
+		if auto_tenant_creation is not None:
+			multi_kwargs['auto_tenant_creation'] = auto_tenant_creation
+		if auto_tenant_activation is not None:
+			multi_kwargs['auto_tenant_activation'] = auto_tenant_activation
+		if multi_kwargs:
+			update_config['multi_tenancy_config'] = Reconfigure.multi_tenancy(**multi_kwargs)
+		repl_kwargs = {}
+		if async_enabled is not None:
+			repl_kwargs['async_enabled'] = async_enabled
+		if deletion_strategy is not None:
+			if isinstance(deletion_strategy, ReplicationDeletionStrategy):
+				repl_kwargs['deletion_strategy'] = deletion_strategy
+			elif isinstance(deletion_strategy, str) and hasattr(ReplicationDeletionStrategy, deletion_strategy):
+				repl_kwargs['deletion_strategy'] = getattr(ReplicationDeletionStrategy, deletion_strategy)
+			else:
+				raise Exception(f"Invalid ReplicationDeletionStrategy: {deletion_strategy}")
+		if repl_kwargs:
+			update_config['replication_config'] = Reconfigure.replication(**repl_kwargs)
+		if update_config:
+			collection.config.update(**update_config)
+		return True
+	except Exception as e:
+		raise Exception(f"Failed to update multi-tenancy/replication: {str(e)}")
+
+def update_hnsw_vector_index(client, collection_name, dynamic_ef_factor, dynamic_ef_min, dynamic_ef_max, filter_strategy, flat_search_cutoff, vector_cache_max_objects):
+	print(f"update_hnsw_vector_index is called")
+	try:
+		collection = client.collections.get(collection_name)
+		hnsw_params = {}
+		if dynamic_ef_factor is not None:
+			hnsw_params['dynamic_ef_factor'] = dynamic_ef_factor
+		if dynamic_ef_min is not None:
+			hnsw_params['dynamic_ef_min'] = dynamic_ef_min
+		if dynamic_ef_max is not None:
+			hnsw_params['dynamic_ef_max'] = dynamic_ef_max
+		if filter_strategy is not None:
+			if isinstance(filter_strategy, VectorFilterStrategy):
+				hnsw_params['filter_strategy'] = filter_strategy
+			elif isinstance(filter_strategy, str) and hasattr(VectorFilterStrategy, filter_strategy):
+				hnsw_params['filter_strategy'] = getattr(VectorFilterStrategy, filter_strategy)
+			else:
+				raise Exception(f"Invalid VectorFilterStrategy: {filter_strategy}")
+		if flat_search_cutoff is not None:
+			hnsw_params['flat_search_cutoff'] = flat_search_cutoff
+		if vector_cache_max_objects is not None:
+			hnsw_params['vector_cache_max_objects'] = vector_cache_max_objects
+		if hnsw_params:
+			collection.config.update(vectorizer_config=Reconfigure.VectorIndex.hnsw(**hnsw_params))
+		return True
+	except Exception as e:
+		raise Exception(f"Failed to update HNSW vector index: {str(e)}")
+
+def update_pq_quantizer(client, collection_name, pq_enabled, pq_centroids, pq_segments, pq_training_limit, pq_encoder_type, pq_encoder_distribution):
+	print(f"update_pq_quantizer is called")
+	try:
+		collection = client.collections.get(collection_name)
+		pq_kwargs = {}
+		if pq_enabled is not None:
+			pq_kwargs['enabled'] = pq_enabled
+		if pq_centroids is not None:
+			pq_kwargs['centroids'] = pq_centroids
+		if pq_segments is not None:
+			pq_kwargs['segments'] = pq_segments
+		if pq_training_limit is not None:
+			pq_kwargs['training_limit'] = pq_training_limit
+		if pq_encoder_type is not None:
+			if isinstance(pq_encoder_type, PQEncoderType):
+				pq_kwargs['encoder_type'] = pq_encoder_type
+			elif isinstance(pq_encoder_type, str) and hasattr(PQEncoderType, pq_encoder_type):
+				pq_kwargs['encoder_type'] = getattr(PQEncoderType, pq_encoder_type)
+			else:
+				raise Exception(f"Invalid PQEncoderType: {pq_encoder_type}")
+		if pq_encoder_distribution is not None:
+			if isinstance(pq_encoder_distribution, PQEncoderDistribution):
+				pq_kwargs['encoder_distribution'] = pq_encoder_distribution
+			elif isinstance(pq_encoder_distribution, str) and hasattr(PQEncoderDistribution, pq_encoder_distribution):
+				pq_kwargs['encoder_distribution'] = getattr(PQEncoderDistribution, pq_encoder_distribution)
+			else:
+				raise Exception(f"Invalid PQEncoderDistribution: {pq_encoder_distribution}")
+		collection.config.update(vectorizer_config=Reconfigure.VectorIndex.hnsw(quantizer=Reconfigure.VectorIndex.Quantizer.pq(**pq_kwargs)))
+		return True
+	except Exception as e:
+		raise Exception(f"Failed to update PQ quantizer: {str(e)}")
 
 # Convert and display collection configuration to a pandas DataFrame
 def display_config_as_table(config):
