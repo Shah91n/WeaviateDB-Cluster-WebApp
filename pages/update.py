@@ -2,7 +2,7 @@ import streamlit as st
 import json
 from datetime import datetime, date
 from utils.objects.update_object import get_object_in_collection, display_object_as_table, find_object_in_collection_on_nodes, get_object_in_tenant, find_object_in_tenant_on_nodes, update_object_properties
-from utils.collections.update_collection_config import get_collection_config, update_collection_config
+from utils.collections.update_collection_config import get_collection_config, update_description_and_inverted_index, update_multi_tenancy_and_replication, update_hnsw_vector_index, update_pq_quantizer
 from utils.sidebar.navigation import navigate
 from utils.sidebar.helper import update_side_bar_labels
 from utils.cluster.collection import fetch_collection_config, list_collections
@@ -359,157 +359,142 @@ def get_collection_configuration():
 # Update collection configuration UI
 def update_collection_config_ui(config):
 	print(f"update_collection_config_ui called")
-	with st.form("edit_collection_config"):
-		# Description (always present)
-		description = getattr(config, 'description', "")
-		description = st.text_input("Description", value=description)
+	# 1) Description + Inverted Index
+	st.markdown("#### Description & Inverted Index Config")
+	description = getattr(config, 'description', "")
+	description = st.text_input("Description", value=description, key="desc_input")
+	inverted = getattr(config, 'inverted_index_config', None)
+	bm25_b = getattr(getattr(inverted, 'bm25', None), 'b', 0.75) if inverted else 0.75
+	bm25_k1 = getattr(getattr(inverted, 'bm25', None), 'k1', 1.2) if inverted else 1.2
+	cleanup_interval = getattr(inverted, 'cleanup_interval_seconds', 60) if inverted else 60
+	stopwords = getattr(inverted, 'stopwords', None) if inverted else None
+	stopwords_preset = getattr(stopwords, 'preset', StopwordsPreset.EN) if stopwords else StopwordsPreset.EN
+	stopwords_add_list = getattr(stopwords, 'additions', []) if stopwords else []
+	stopwords_remove_list = getattr(stopwords, 'removals', []) if stopwords else []
+	stopwords_add = ", ".join(stopwords_add_list) if isinstance(stopwords_add_list, (list, tuple)) and stopwords_add_list else ""
+	stopwords_remove = ", ".join(stopwords_remove_list) if isinstance(stopwords_remove_list, (list, tuple)) and stopwords_remove_list else ""
+	bm25_b = st.number_input("BM25 b", value=float(bm25_b), min_value=0.0, max_value=1.0, step=0.01, key="bm25_b")
+	bm25_k1 = st.number_input("BM25 k1", value=float(bm25_k1), min_value=0.0, step=0.01, key="bm25_k1")
+	cleanup_interval = st.number_input("Cleanup Interval (s)", value=int(cleanup_interval), min_value=0, key="cleanup_interval")
+	stopwords_preset_str = st.selectbox("Stopwords Preset", [e.name for e in StopwordsPreset], index=[e.name for e in StopwordsPreset].index(stopwords_preset.name if hasattr(stopwords_preset, 'name') else str(stopwords_preset)), key="stopwords_preset")
+	stopwords_add = st.text_input("Stopwords Additions (comma separated)", value=stopwords_add, key="stop_add")
+	stopwords_remove = st.text_input("Stopwords Removals (comma separated)", value=stopwords_remove, key="stop_remove")
+	if st.button("Update Description & Inverted Index", use_container_width=True, key="save_desc_inv"):
+		try:
+			update_description_and_inverted_index(
+				st.session_state.client,
+				st.session_state.current_collection,
+				description,
+				bm25_b,
+				bm25_k1,
+				cleanup_interval,
+				StopwordsPreset[stopwords_preset_str] if stopwords_preset_str else None,
+				stopwords_add,
+				stopwords_remove
+			)
+			st.success("Description & Inverted Index updated!")
+		except Exception as e:
+			st.error(f"Failed to update: {str(e)}")
 
-		# Inverted Index Config
-		inverted = getattr(config, 'inverted_index_config', None)
-		bm25_b = getattr(getattr(inverted, 'bm25', None), 'b', 0.75) if inverted else 0.75
-		bm25_k1 = getattr(getattr(inverted, 'bm25', None), 'k1', 1.2) if inverted else 1.2
-		cleanup_interval = getattr(inverted, 'cleanup_interval_seconds', 60) if inverted else 60
-		stopwords = getattr(inverted, 'stopwords', None) if inverted else None
-		stopwords_preset = getattr(stopwords, 'preset', StopwordsPreset.EN) if stopwords else StopwordsPreset.EN
-		
-		stopwords_add_list = getattr(stopwords, 'additions', []) if stopwords else []
-		stopwords_remove_list = getattr(stopwords, 'removals', []) if stopwords else []
-		stopwords_add = ", ".join(stopwords_add_list) if isinstance(stopwords_add_list, (list, tuple)) and stopwords_add_list else ""
-		stopwords_remove = ", ".join(stopwords_remove_list) if isinstance(stopwords_remove_list, (list, tuple)) and stopwords_remove_list else ""
+	# 2) Multi-tenancy, Deletion Strategy & Replication
+	st.markdown("#### Multi-tenancy, Deletion Strategy & Replication Config")
+	multi = getattr(config, 'multi_tenancy_config', None)
+	auto_tenant_creation = getattr(multi, 'auto_tenant_creation', False) if multi else False
+	auto_tenant_activation = getattr(multi, 'auto_tenant_activation', False) if multi else False
+	auto_tenant_creation = st.checkbox("Auto Tenant Creation", value=bool(auto_tenant_creation), key="auto_tenant_creation")
+	auto_tenant_activation = st.checkbox("Auto Tenant Activation", value=bool(auto_tenant_activation), key="auto_tenant_activation")
+	repl = getattr(config, 'replication_config', None)
+	async_enabled = getattr(repl, 'async_enabled', False) if repl else False
+	deletion_strategy = getattr(repl, 'deletion_strategy', None)
+	allowed_deletion_strategies = ["DELETE_ON_CONFLICT", "NO_AUTOMATED_RESOLUTION", "TIME_BASED_RESOLUTION"]
+	deletion_strategy_str = st.selectbox("Deletion Strategy", allowed_deletion_strategies, index=allowed_deletion_strategies.index(deletion_strategy.name if deletion_strategy else "DELETE_ON_CONFLICT"), key="del_strategy")
+	async_enabled = st.checkbox("Async Enabled", value=bool(async_enabled), key="async_enabled")
+	if st.button("Update Multi-tenancy & Replication", use_container_width=True, key="save_multi_repl"):
+		try:
+			update_multi_tenancy_and_replication(
+				st.session_state.client,
+				st.session_state.current_collection,
+				auto_tenant_creation,
+				auto_tenant_activation,
+				async_enabled,
+				deletion_strategy_str
+			)
+			st.success("Multi-tenancy & Replication updated!")
+		except Exception as e:
+			st.error(f"Failed to update: {str(e)}")
 
-		st.markdown("#### Inverted Index Config")
-		bm25_b = st.number_input("BM25 b", value=float(bm25_b), min_value=0.0, max_value=1.0, step=0.01)
-		bm25_k1 = st.number_input("BM25 k1", value=float(bm25_k1), min_value=0.0, step=0.01)
-		cleanup_interval = st.number_input("Cleanup Interval (s)", value=int(cleanup_interval), min_value=0)
-		stopwords_preset_str = st.selectbox("Stopwords Preset", [e.name for e in StopwordsPreset], index=[e.name for e in StopwordsPreset].index(stopwords_preset.name if hasattr(stopwords_preset, 'name') else str(stopwords_preset)))
-		stopwords_add = st.text_input("Stopwords Additions (comma separated)", value=stopwords_add)
-		stopwords_remove = st.text_input("Stopwords Removals (comma separated)", value=stopwords_remove)
+	# 3) HNSW Vector Index
+	st.markdown("#### HNSW Vector Index Config")
+	vector = getattr(config, 'vector_index_config', None)
+	dynamic_ef_factor = getattr(vector, 'dynamic_ef_factor', 8) if vector else 8
+	dynamic_ef_min = getattr(vector, 'dynamic_ef_min', 100) if vector else 100
+	dynamic_ef_max = getattr(vector, 'dynamic_ef_max', 500) if vector else 500
+	filter_strategy = getattr(vector, 'filter_strategy', None)
+	flat_search_cutoff = getattr(vector, 'flat_search_cutoff', 10000) if vector else 10000
+	vector_cache_max_objects = getattr(vector, 'vector_cache_max_objects', 1000000) if vector else 1000000
+	dynamic_ef_factor = st.number_input("Dynamic EF Factor", value=int(dynamic_ef_factor), min_value=1, key="def")
+	dynamic_ef_min = st.number_input("Dynamic EF Min", value=int(dynamic_ef_min), min_value=1, key="defmin")
+	dynamic_ef_max = st.number_input("Dynamic EF Max", value=int(dynamic_ef_max), min_value=1, key="defmax")
+	filter_strategy_str = st.selectbox("Filter Strategy", [e.name for e in VectorFilterStrategy], index=[e.name for e in VectorFilterStrategy].index(filter_strategy.name if filter_strategy else "SWEEPING"), key="filter_strategy")
+	flat_search_cutoff = st.number_input("Flat Search Cutoff", value=int(flat_search_cutoff), min_value=0, key="fsc")
+	vector_cache_max_objects = st.number_input("Vector Cache Max Objects", value=int(vector_cache_max_objects), min_value=0, key="vcmo")
+	if st.button("Update HNSW Vector Index", use_container_width=True, key="save_hnsw"):
+		try:
+			update_hnsw_vector_index(
+				st.session_state.client,
+				st.session_state.current_collection,
+				dynamic_ef_factor,
+				dynamic_ef_min,
+				dynamic_ef_max,
+				filter_strategy_str,
+				flat_search_cutoff,
+				vector_cache_max_objects
+			)
+			st.success("HNSW Vector Index updated!")
+		except Exception as e:
+			st.error(f"Failed to update: {str(e)}")
 
-		# Multi-Tenancy Config
-		multi = getattr(config, 'multi_tenancy_config', None)
-		auto_tenant_creation = getattr(multi, 'auto_tenant_creation', False) if multi else False
-		auto_tenant_activation = getattr(multi, 'auto_tenant_activation', False) if multi else False
-		st.markdown("#### Multi-Tenancy Config")
-		auto_tenant_creation = st.checkbox("Auto Tenant Creation", value=bool(auto_tenant_creation))
-		auto_tenant_activation = st.checkbox("Auto Tenant Activation", value=bool(auto_tenant_activation))
-
-		# Replication Config
-		repl = getattr(config, 'replication_config', None)
-		async_enabled = getattr(repl, 'async_enabled', False) if repl else False
-		deletion_strategy = getattr(repl, 'deletion_strategy', None)
-		allowed_deletion_strategies = [
-			"DELETE_ON_CONFLICT",
-			"NO_AUTOMATED_RESOLUTION",
-			"TIME_BASED_RESOLUTION"
-		]
-		deletion_strategy_str = st.selectbox(
-			"Deletion Strategy",
-			allowed_deletion_strategies,
-			index=allowed_deletion_strategies.index(deletion_strategy.name if deletion_strategy else "DELETE_ON_CONFLICT")
-		)
-		st.markdown("#### Replication Config")
-		async_enabled = st.checkbox("Async Enabled", value=bool(async_enabled))
-
-		# HNSW Vector Index Config (use vector_index_config)
-		vector = getattr(config, 'vector_index_config', None)
-		dynamic_ef_factor = getattr(vector, 'dynamic_ef_factor', 8) if vector else 8
-		dynamic_ef_min = getattr(vector, 'dynamic_ef_min', 100) if vector else 100
-		dynamic_ef_max = getattr(vector, 'dynamic_ef_max', 500) if vector else 500
-		filter_strategy = getattr(vector, 'filter_strategy', None)
-		flat_search_cutoff = getattr(vector, 'flat_search_cutoff', 10000) if vector else 10000
-		vector_cache_max_objects = getattr(vector, 'vector_cache_max_objects', 1000000) if vector else 1000000
-		st.markdown("#### HNSW Vector Index Config")
-		dynamic_ef_factor = st.number_input("Dynamic EF Factor", value=int(dynamic_ef_factor), min_value=1)
-		dynamic_ef_min = st.number_input("Dynamic EF Min", value=int(dynamic_ef_min), min_value=1)
-		dynamic_ef_max = st.number_input("Dynamic EF Max", value=int(dynamic_ef_max), min_value=1)
-		filter_strategy_str = st.selectbox(
-			"Filter Strategy",
-			[e.name for e in VectorFilterStrategy],
-			index=[e.name for e in VectorFilterStrategy].index(filter_strategy.name if filter_strategy else "SWEEPING")
-		)
-		flat_search_cutoff = st.number_input("Flat Search Cutoff", value=int(flat_search_cutoff), min_value=0)
-		vector_cache_max_objects = st.number_input("Vector Cache Max Objects", value=int(vector_cache_max_objects), min_value=0)
-
-		# PQ Quantizer Config (use vector_index_config.quantizer)
-		quantizer = getattr(vector, 'quantizer', None) if vector else None
-
-		# Check if quantizer exists and is a PQ config
-		pq_enabled = False
-		pq_centroids = 256
-		pq_segments = 8
-		pq_training_limit = 10000
-		pq_encoder_type = PQEncoderType.KMEANS
-		pq_encoder_distribution = PQEncoderDistribution.NORMAL
-
-		if quantizer is not None:
-			pq_enabled = True
-			pq_centroids = getattr(quantizer, 'centroids', 256)
-			pq_segments = getattr(quantizer, 'segments', 8)
-			pq_training_limit = getattr(quantizer, 'training_limit', 10000)
-			encoder = getattr(quantizer, 'encoder', None)
-			if encoder is not None:
-				pq_encoder_type = getattr(encoder, 'type_', PQEncoderType.KMEANS)
-				pq_encoder_distribution = getattr(encoder, 'distribution', PQEncoderDistribution.NORMAL)
-
-		st.markdown("#### PQ Quantizer Config")
-		pq_enabled = st.checkbox("PQ Enabled", value=pq_enabled)
-		pq_centroids = st.number_input("PQ Centroids", value=int(pq_centroids), min_value=1)
-		pq_segments = st.number_input("PQ Segments", value=int(pq_segments), min_value=1)
-		pq_training_limit = st.number_input("PQ Training Limit", value=int(pq_training_limit), min_value=1)
-
-		# Get the actual enum name for display
-		encoder_type_name = pq_encoder_type.name if hasattr(pq_encoder_type, 'name') else str(pq_encoder_type)
-		encoder_distribution_name = pq_encoder_distribution.name if hasattr(pq_encoder_distribution, 'name') else str(pq_encoder_distribution)
-
-		pq_encoder_type_str = st.selectbox(
-			"PQ Encoder Type",
-			[e.name for e in PQEncoderType],
-			index=[e.name for e in PQEncoderType].index(encoder_type_name)
-		)
-		pq_encoder_distribution_str = st.selectbox(
-			"PQ Encoder Distribution",
-			[e.name for e in PQEncoderDistribution],
-			index=[e.name for e in PQEncoderDistribution].index(encoder_distribution_name)
-		)
-
-		submitted = st.form_submit_button("Save Changes")
-		if submitted:
-			config_updates = {
-				# Description
-				"description": description,
-				# Inverted Index
-				"bm25_b": bm25_b,
-				"bm25_k1": bm25_k1,
-				"cleanup_interval_seconds": cleanup_interval,
-				"stopwords_preset": StopwordsPreset[stopwords_preset_str] if stopwords_preset_str else None,
-				"stopwords_additions": stopwords_add,
-				"stopwords_removals": stopwords_remove,
-				# Multi-Tenancy
-				"auto_tenant_creation": auto_tenant_creation,
-				"auto_tenant_activation": auto_tenant_activation,
-				# Replication
-				"async_enabled": async_enabled,
-				"deletion_strategy": deletion_strategy_str,
-				# HNSW
-				"dynamic_ef_factor": dynamic_ef_factor,
-				"dynamic_ef_min": dynamic_ef_min,
-				"dynamic_ef_max": dynamic_ef_max,
-				"filter_strategy": filter_strategy_str,
-				"flat_search_cutoff": flat_search_cutoff,
-				"vector_cache_max_objects": vector_cache_max_objects,
-				# PQ
-				"pq_enabled": pq_enabled,
-				"pq_centroids": pq_centroids,
-				"pq_segments": pq_segments,
-				"pq_training_limit": pq_training_limit,
-				"pq_encoder_type": pq_encoder_type_str,
-				"pq_encoder_distribution": pq_encoder_distribution_str,
-			}
-			try:
-				update_collection_config(st.session_state.client, st.session_state.current_collection, config_updates)
-				st.success("Configuration updated successfully!")
-			except Exception as e:
-				st.error(f"Failed to update configuration: {str(e)}")
+	# 4) PQ Quantizer
+	st.markdown("#### PQ Quantizer Config")
+	quantizer = getattr(vector, 'quantizer', None) if vector else None
+	pq_enabled = False
+	pq_centroids = 256
+	pq_segments = 8
+	pq_training_limit = 10000
+	pq_encoder_type = PQEncoderType.KMEANS
+	pq_encoder_distribution = PQEncoderDistribution.NORMAL
+	if quantizer is not None:
+		pq_enabled = True
+		pq_centroids = getattr(quantizer, 'centroids', 256)
+		pq_segments = getattr(quantizer, 'segments', 8)
+		pq_training_limit = getattr(quantizer, 'training_limit', 10000)
+		encoder = getattr(quantizer, 'encoder', None)
+		if encoder is not None:
+			pq_encoder_type = getattr(encoder, 'type_', PQEncoderType.KMEANS)
+			pq_encoder_distribution = getattr(encoder, 'distribution', PQEncoderDistribution.NORMAL)
+	pq_enabled = st.checkbox("PQ Enabled", value=pq_enabled, key="pq_enabled")
+	pq_centroids = st.number_input("PQ Centroids", value=int(pq_centroids), min_value=1, key="pq_centroids")
+	pq_segments = st.number_input("PQ Segments", value=int(pq_segments), min_value=1, key="pq_segments")
+	pq_training_limit = st.number_input("PQ Training Limit", value=int(pq_training_limit), min_value=1, key="pq_train")
+	encoder_type_name = pq_encoder_type.name if hasattr(pq_encoder_type, 'name') else str(pq_encoder_type)
+	encoder_distribution_name = pq_encoder_distribution.name if hasattr(pq_encoder_distribution, 'name') else str(pq_encoder_distribution)
+	pq_encoder_type_str = st.selectbox("PQ Encoder Type", [e.name for e in PQEncoderType], index=[e.name for e in PQEncoderType].index(encoder_type_name), key="pq_enc_type")
+	pq_encoder_distribution_str = st.selectbox("PQ Encoder Distribution", [e.name for e in PQEncoderDistribution], index=[e.name for e in PQEncoderDistribution].index(encoder_distribution_name), key="pq_enc_dist")
+	if st.button("Update PQ Quantizer", use_container_width=True, key="save_pq"):
+		try:
+			update_pq_quantizer(
+				st.session_state.client,
+				st.session_state.current_collection,
+				pq_enabled,
+				pq_centroids,
+				pq_segments,
+				pq_training_limit,
+				pq_encoder_type_str,
+				pq_encoder_distribution_str
+			)
+			st.success("PQ Quantizer updated!")
+		except Exception as e:
+			st.error(f"Failed to update: {str(e)}")
 
 def main():
 
