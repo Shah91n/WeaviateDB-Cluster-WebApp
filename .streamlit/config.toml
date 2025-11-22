@@ -1,0 +1,7 @@
+# Hide default sidebar navigation for custom menus
+[client]
+showSidebarNavigation = false
+
+# Disable anonymous usage statistics collection
+[browser]
+gatherUsageStats = false

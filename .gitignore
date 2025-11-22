@@ -3,7 +3,6 @@ TODO
 .DS_Store
 .devcontainer
 TEST_*
-.streamlit/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
