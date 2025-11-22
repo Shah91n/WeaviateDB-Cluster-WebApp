@@ -2,7 +2,6 @@
 TODO
 .DS_Store
 .devcontainer
-.streamlit/secrets.toml
 TEST_*
 .streamlit/
 
