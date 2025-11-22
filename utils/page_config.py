@@ -9,10 +9,11 @@ def set_custom_page_config(page_title="Weaviate Cluster", layout="wide", initial
 	logo_image = Image.open(logo_path)
 
 	st.set_page_config(
-		page_title=page_title,
+		page_title=f"{page_title} {st.session_state.get('active_endpoint', 'N/A')}",
 		layout=layout,
 		initial_sidebar_state=initial_sidebar_state,
 		page_icon=logo_image,
 	)
 
 	st.title(page_title)
+	
