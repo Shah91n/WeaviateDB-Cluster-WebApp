@@ -122,7 +122,7 @@ def display_collection_info(client):
 	info = st.session_state.collection_info
 
 	# Button to view objects
-	if st.button("View Collection (100 Objects only)", use_container_width=True):
+	if st.button(f"View {info['name']} Collection (100 Objects only)", use_container_width=True):
 		# Display only Object Count
 		st.metric("Object Count", info["object_count"])
 

@@ -53,7 +53,7 @@ def display_multitenancy(client):
 		if selected_collection:
 			multi_tenancy_config = selected_collection['multiTenancyConfig']
 			multi_tenancy_df = pd.DataFrame([multi_tenancy_config])
-			st.dataframe(multi_tenancy_df.astype(str), use_container_width=True)
+			st.dataframe(multi_tenancy_df.astype(str), width="stretch")
 		else:
 			st.error("Failed to find the selected collection in the available collections.")
 	return True
@@ -72,9 +72,9 @@ def tenant_details():
 				'Activity Status Internal': tenant.activityStatusInternal.name,
 				'Activity Status': tenant.activityStatus.name
 			})
-		st.dataframe(pd.DataFrame(aggregated_states.items(), columns=['Activity Status', 'Count']), use_container_width=True)
+		st.dataframe(pd.DataFrame(aggregated_states.items(), columns=['Activity Status', 'Count']), width="stretch")
 		df = pd.DataFrame(tenant_data)
-		st.dataframe(df.astype(str), use_container_width=True)
+		st.dataframe(df.astype(str), width="stretch")
 
 def main():
 

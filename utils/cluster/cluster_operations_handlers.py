@@ -3,7 +3,7 @@ import streamlit as st
 import requests
 import time
 from utils.cluster.collection import aggregate_collections, get_schema, list_collections, process_collection_config, fetch_collection_config, get_collectios_count
-from utils.cluster.cluster_operations import fetch_cluster_statistics, process_statistics, get_shards_info, process_shards_data, get_metadata, check_shard_consistency, read_repairs
+from utils.cluster.cluster_operations import fetch_cluster_statistics, process_statistics, get_shards_info, process_shards_data, get_metadata, check_shard_consistency, read_repairs, diagnose_schema
 
 # --------------------------------------------------------------------------
 # Action Handlers (one function per button) for Cluster Operations
@@ -22,26 +22,26 @@ def action_nodes_and_shards():
 
 		st.markdown("#### Node Details")
 		if not node_table.empty:
-			st.dataframe(node_table.astype(str), use_container_width=True)
+			st.dataframe(node_table.astype(str), width="stretch")
 		else:
 			st.warning("No node details available.")
 
 		st.markdown("#### Shard Count")
 		if not collection_shard_table.empty:
-			st.dataframe(collection_shard_table, use_container_width=True)
+			st.dataframe(collection_shard_table, width="stretch")
 		else:
 			st.warning("No shard collection details available.")
 
 		st.markdown("#### Shard Details")
 		if not shard_table.empty:
-			st.dataframe(shard_table.astype(str), use_container_width=True)
+			st.dataframe(shard_table.astype(str), width="stretch")
 		else:
 			st.warning("No shard details available.")
 
 		# Readonly shards section
 		st.markdown("#### Read-only Shards")
 		if not readonly_shards_table.empty:
-			st.dataframe(readonly_shards_table[["Node Name", "Class", "Shard Name", "Object Count"]].astype(str), use_container_width=True)
+			st.dataframe(readonly_shards_table[["Node Name", "Class", "Shard Name", "Object Count"]].astype(str), width="stretch")
 			st.warning("⬇️ This operation requires administrator privileges. Please ensure you are connected with an admin API key.")
 			if st.button("Set all Read-only Shards to READY", type="primary"):
 				readonly_groups = readonly_shards_table.groupby("Class")["Shard Name"].apply(list).to_dict()
@@ -71,7 +71,7 @@ def action_check_shard_consistency():
 			inconsistent_collections = list(df_inconsistent_shards["Collection"].unique())
 			total = len(inconsistent_collections)
 			st.markdown(f"#### Inconsistent Shards Table with {total} Inconsistent collections")
-			st.dataframe(df_inconsistent_shards.astype(str), use_container_width=True)
+			st.dataframe(df_inconsistent_shards.astype(str), width="stretch")
 		else:
 			st.success("All shards are consistent.")
 	else:
@@ -131,7 +131,7 @@ def action_aggregate_collections_tenants():
 	# Display the main dataframe
 	result_df = result["result_df"]
 	if not result_df.empty:
-		st.dataframe(result_df.astype(str), use_container_width=True)
+		st.dataframe(result_df.astype(str), width="stretch")
 	else:
 		st.warning("No data to display.")
 
@@ -140,14 +140,14 @@ def action_aggregate_collections_tenants():
 	if empty_collections_list:
 		st.markdown("#### Collections with Zero Objects")
 		empty_collections_df = pd.DataFrame(empty_collections_list)
-		st.dataframe(empty_collections_df, use_container_width=True)
+		st.dataframe(empty_collections_df, width="stretch")
 
 	# Display empty tenants table if any exist
 	empty_tenants_details = result["empty_tenants_details"]
 	if empty_tenants_details:
 		st.markdown("#### Tenants with Zero Objects")
 		empty_tenants_df = pd.DataFrame(empty_tenants_details)
-		st.dataframe(empty_tenants_df, use_container_width=True)
+		st.dataframe(empty_tenants_df, width="stretch")
 
 # Fetch and display collection properties.
 def action_collection_schema():
@@ -159,7 +159,7 @@ def action_collection_schema():
 		else:
 			st.markdown("#### Collection Properties")
 			for collection_name, collection_details in schema.items():
-				with st.expander(f"Collection: {collection_name}", expanded=False):
+				with st.expander(f"{collection_name}", expanded=False):
 					st.markdown(f"**Name:** {collection_details.name}")
 					st.markdown(f"**Description:** {collection_details.description or 'None'}")
 					st.markdown(f"**Vectorizer:** {collection_details.vectorizer or 'If no vectorizer then could be NamedVectors (check collections config) or its BYOV'}")
@@ -176,7 +176,7 @@ def action_collection_schema():
 							"Vectorizer": prop.vectorizer or "None",
 						})
 					if properties_data:
-						st.dataframe(pd.DataFrame(properties_data), use_container_width=True)
+						st.dataframe(pd.DataFrame(properties_data), width="stretch")
 					else:
 						st.markdown("*No properties found.*")
 	else:
@@ -205,19 +205,19 @@ def action_statistics(cluster_endpoint, api_key):
 
 		# Display main statistics
 		flattened_data = processed_stats["data"]
-		st.dataframe(flattened_data, use_container_width=True)
+		st.dataframe(flattened_data, width="stretch")
 
 		# Display network information
 		st.markdown("##### Network Information")
 		network_df = processed_stats["network_info"]
 		if not network_df.empty:
-			st.dataframe(network_df, use_container_width=True)
+			st.dataframe(network_df, width="stretch")
 
 		# Display latest configuration
 		st.markdown("##### Latest Configuration")
 		latest_config_df = processed_stats["latest_config"]
 		if not latest_config_df.empty:
-			st.dataframe(latest_config_df, use_container_width=True)
+			st.dataframe(latest_config_df, width="stretch")
 
 	except Exception as e:
 		st.error(f"Error fetching cluster statistics: {e}")
@@ -234,128 +234,119 @@ def action_metadata(cluster_endpoint, api_key):
 		# Display general metadata
 		general_metadata_df = metadata_result["general_metadata_df"]
 		st.markdown("##### General Information")
-		st.dataframe(general_metadata_df, use_container_width=True)
+		st.dataframe(general_metadata_df, width="stretch")
 
 		# Display standard modules
 		standard_modules_df = metadata_result["standard_modules_df"]
 		if not standard_modules_df.empty:
 			st.markdown("##### Modules")
-			st.dataframe(standard_modules_df, use_container_width=True)
+			st.dataframe(standard_modules_df, width="stretch")
 
 		# Display other modules
 		other_modules_df = metadata_result["other_modules_df"]
 		if not other_modules_df.empty:
 			st.markdown("##### Other Modules")
-			st.dataframe(other_modules_df, use_container_width=True)
+			st.dataframe(other_modules_df, width="stretch")
 
 # Fetch and display collection configurations.
 def action_collections_configuration(cluster_endpoint, api_key):
 	print("action_collections_configuration called")
 	"""
-	  1. Checks if connected.
-	  2. Loads collection list (and stores in session_state).
-	  3. Displays a selectbox.
-	  4. Display "Get Configuration" button to fetch + display config.
+	Fetches and displays collection configurations in expandable sections.
+	Similar to Collection Properties, this always fetches fresh data.
 	"""
-	# Load collections list if not already loaded in session_state
-	if "collections_list" not in st.session_state:
-		collection_list = list_collections(st.session_state.client)
-		if collection_list and not isinstance(collection_list, dict):
-			st.session_state["collections_list"] = collection_list
-		else:
-			st.session_state["collections_list"] = []
-
-	# Show a selectbox for the user to choose a collection
-	if st.session_state["collections_list"]:
-		collection_count = get_collectios_count(st.session_state.client)
-		st.markdown(f"###### Total Number of Collections in the list: **{collection_count}**\n")
-		selected_collection = st.selectbox(
-			"Select a Collection",
-			st.session_state["collections_list"],
-		)
-	else:
+	# Fetch fresh collection list every time
+	collection_list = list_collections(st.session_state.client)
+	
+	if not collection_list or isinstance(collection_list, dict):
 		st.warning("No collections available to display.")
 		return
+	
+	collection_count = len(collection_list)
+	st.markdown(f"###### Total Number of Collections: **{collection_count}**")
+	st.markdown("#### Collections Configuration")
+	
+	# Display each collection in an expander
+	for collection_name in collection_list:
+		with st.expander(f"{collection_name}", expanded=False):
+			# Fetch configuration for this collection
+			config = fetch_collection_config(cluster_endpoint, api_key, collection_name)
+			if "error" in config:
+				st.error(config["error"])
+			else:
+				processed_config = process_collection_config(config)
 
-	if st.button("Get Configuration", use_container_width=True):
-		config = fetch_collection_config(cluster_endpoint, api_key, selected_collection)
-		if "error" in config:
-			st.error(config["error"])
-		else:
-			processed_config = process_collection_config(config)
-			st.markdown(f"##### **{selected_collection}** Configurations: ")
+				for section, details in processed_config.items():
+					# Handle Named Vectors Config
+					if section == "Named Vectors Config" and isinstance(details, dict):
+						for vector_name, vector_info in details.items():
+							# Print the Named Vector title
+							st.markdown(f"##### Named Vector: {vector_name}")
 
-			for section, details in processed_config.items():
-				# Handle Named Vectors Config
-				if section == "Named Vectors Config" and isinstance(details, dict):
-					for vector_name, vector_info in details.items():
-						# Print the Named Vector title
-						st.markdown(f"##### Named Vector: {vector_name}")
+							# 1. Display Vectorizer section first if it exists
+							if "Vectorizer" in vector_info and isinstance(vector_info["Vectorizer"], dict):
+								for vec_name, vec_config in vector_info["Vectorizer"].items():
+									st.markdown(f"###### Vectorizer: **{vec_name}**")
+									if isinstance(vec_config, dict) and vec_config:
+										df = pd.DataFrame(list(vec_config.items()), columns=["Key", "Value"])
+										st.dataframe(df.astype(str), width="stretch")
+									else:
+										st.markdown(f"**{vec_config}**")
 
-						# 1. Display Vectorizer section first if it exists
-						if "Vectorizer" in vector_info and isinstance(vector_info["Vectorizer"], dict):
-							for vec_name, vec_config in vector_info["Vectorizer"].items():
-								st.markdown(f"###### Vectorizer: **{vec_name}**")
-								if isinstance(vec_config, dict) and vec_config:
-									df = pd.DataFrame(list(vec_config.items()), columns=["Key", "Value"])
-									st.dataframe(df.astype(str), use_container_width=True)
-								else:
-									st.markdown(f"**{vec_config}**")
+							# 2. Display Vector Index Type if it exists
+							if "Vector Index Type" in vector_info:
+								sub_details = vector_info["Vector Index Type"]
+								st.markdown(f"###### Vector Index Type: **{sub_details}**")
 
-						# 2. Display Vector Index Type if it exists
-						if "Vector Index Type" in vector_info:
-							sub_details = vector_info["Vector Index Type"]
-							st.markdown(f"###### Vector Index Type: **{sub_details}**")
-
-						# 3. Display Vector Index Config if it exists
-						if "Vector Index Config" in vector_info:
-							sub_details = vector_info["Vector Index Config"]
-							st.markdown(f"###### Vector Index Config:")
-							if isinstance(sub_details, dict) and sub_details:
-								df = pd.DataFrame(list(sub_details.items()), columns=["Key", "Value"])
-								st.dataframe(df.astype(str), use_container_width=True)
-							else:
-								st.markdown(f"**{sub_details}**")
-
-						# 4. Handle any additional subsections
-						for sub_section, sub_details in vector_info.items():
-							if sub_section not in ["Vectorizer", "Vector Index Type", "Vector Index Config"]:
-								st.markdown(f"###### {sub_section}:")
+							# 3. Display Vector Index Config if it exists
+							if "Vector Index Config" in vector_info:
+								sub_details = vector_info["Vector Index Config"]
+								st.markdown(f"###### Vector Index Config:")
 								if isinstance(sub_details, dict) and sub_details:
 									df = pd.DataFrame(list(sub_details.items()), columns=["Key", "Value"])
-									st.dataframe(df.astype(str), use_container_width=True)
+									st.dataframe(df.astype(str), width="stretch")
 								else:
 									st.markdown(f"**{sub_details}**")
 
-				# Handle Vectorizer Config in NoNamed Vectors Config found
-				elif section == "Vectorizer Config" and isinstance(details, dict):
-					st.markdown(f"####### {section}:")
-					for vec_name, vec_config in details.items():
-						st.markdown(f"###### Vectorizer: **{vec_name}**")
-						if isinstance(vec_config, dict) and vec_config:
-							df = pd.DataFrame(list(vec_config.items()), columns=["Key", "Value"])
-							st.dataframe(df.astype(str), use_container_width=True)
-						else:
-							st.markdown(f"**{vec_config}**")
+							# 4. Handle any additional subsections
+							for sub_section, sub_details in vector_info.items():
+								if sub_section not in ["Vectorizer", "Vector Index Type", "Vector Index Config"]:
+									st.markdown(f"###### {sub_section}:")
+									if isinstance(sub_details, dict) and sub_details:
+										df = pd.DataFrame(list(sub_details.items()), columns=["Key", "Value"])
+										st.dataframe(df.astype(str), width="stretch")
+									else:
+										st.markdown(f"**{sub_details}**")
 
-						# Retrieve and display module configuration for this vectorizer if available
-						module_conf = config.get("moduleConfig", {}).get(vec_name)
-						if module_conf:
-							st.markdown(f"###### Module Config for {vec_name}:") # Subsection heading
-							if isinstance(module_conf, dict) and module_conf:
-								df_module = pd.DataFrame(list(module_conf.items()), columns=["Key", "Value"])
-								st.dataframe(df_module.astype(str), use_container_width=True)
+					# Handle Vectorizer Config in NoNamed Vectors Config found
+					elif section == "Vectorizer Config" and isinstance(details, dict):
+						st.markdown(f"####### {section}:")
+						for vec_name, vec_config in details.items():
+							st.markdown(f"###### Vectorizer: **{vec_name}**")
+							if isinstance(vec_config, dict) and vec_config:
+								df = pd.DataFrame(list(vec_config.items()), columns=["Key", "Value"])
+								st.dataframe(df.astype(str), width="stretch")
 							else:
-								st.markdown(f"**{module_conf}**")
+								st.markdown(f"**{vec_config}**")
 
-				# Handle other sections if any
-				else:
-					st.markdown(f"###### {section}:")
-					if isinstance(details, dict) and details:
-						df = pd.DataFrame(list(details.items()), columns=["Key", "Value"])
-						st.dataframe(df.astype(str), use_container_width=True)
+							# Retrieve and display module configuration for this vectorizer if available
+							module_conf = config.get("moduleConfig", {}).get(vec_name)
+							if module_conf:
+								st.markdown(f"###### Module Config for {vec_name}:") # Subsection heading
+								if isinstance(module_conf, dict) and module_conf:
+									df_module = pd.DataFrame(list(module_conf.items()), columns=["Key", "Value"])
+									st.dataframe(df_module.astype(str), width="stretch")
+								else:
+									st.markdown(f"**{module_conf}**")
+
+					# Handle other sections if any
 					else:
-						st.markdown(f"**{details}**")
+						st.markdown(f"###### {section}:")
+						if isinstance(details, dict) and details:
+							df = pd.DataFrame(list(details.items()), columns=["Key", "Value"])
+							st.dataframe(df.astype(str), width="stretch")
+						else:
+							st.markdown(f"**{details}**")
 # Read repairs handler
 def action_read_repairs(cluster_endpoint, api_key):
 	print("action_read_repairs called")
@@ -378,7 +369,7 @@ def action_read_repairs(cluster_endpoint, api_key):
 		st.session_state.repair_collections = inconsistent_collections
 
 	st.markdown(f"### Inconsistent {total} collections")
-	st.dataframe(df_inconsistent.astype(str), use_container_width=True)
+	st.dataframe(df_inconsistent.astype(str), width="stretch")
 
 	# Step 2: Synchronize selected_collection with repair_collections.
 	if "selected_collection" not in st.session_state or st.session_state.selected_collection not in st.session_state.repair_collections:
@@ -398,7 +389,7 @@ def action_read_repairs(cluster_endpoint, api_key):
 		st.session_state.selected_collection = None
 
 	# Stop any ongoing read repairs.
-	if st.button("Stop the process", use_container_width=True):
+	if st.button("Stop the process", width="stretch"):
 		print("Stopping read repairs...")
 		if 'repair_in_progress' in st.session_state:
 			del st.session_state.repair_in_progress
@@ -412,11 +403,11 @@ def action_read_repairs(cluster_endpoint, api_key):
 		st.success("Read repairs stopped.")
 
 	# Refresh the collections list when the button is clicked.
-	if st.button("Refresh Collections", use_container_width=True):
+	if st.button("Refresh Collections", width="stretch"):
 		st.success("Collections list refreshed.")
 		
 	# Step 3: Trigger read repairs.
-	if st.button("Start Read Repairs", use_container_width=True):
+	if st.button("Start Read Repairs", width="stretch"):
 		print("Starting read repairs...")
 		if 'repair_in_progress' in st.session_state:
 			del st.session_state.repair_in_progress
@@ -532,4 +523,112 @@ def action_read_repairs(cluster_endpoint, api_key):
 			# Force a rerun to process the next batch.
 			time.sleep(0.5)
 			st.rerun()
+
+# Diagnose schema configuration
+def action_diagnose(cluster_endpoint, api_key):
+	print("action_diagnose called")
+	st.markdown("#### 🔍 Schema Diagnostics Report")
+	st.markdown("Running comprehensive schema diagnostics...")
+	
+	diagnostics = diagnose_schema(cluster_endpoint, api_key)
+	
+	if "error" in diagnostics:
+		st.error(diagnostics["error"])
+		return
+	
+	# 1. Collection Count Check
+	st.markdown("---")
+	st.markdown("### 📊 Collection Count Analysis")
+	if diagnostics["collection_count_status"] == "critical":
+		st.error(diagnostics["collection_count_message"])
+	elif diagnostics["collection_count_status"] == "warning":
+		st.warning(diagnostics["collection_count_message"])
+	else:
+		st.success(diagnostics["collection_count_message"])
+	
+	# Summary metrics
+	col1, col2, col3 = st.columns(3)
+	with col1:
+		st.metric("Total Collections", diagnostics["collection_count"])
+	with col2:
+		st.metric("Compression Issues", len(diagnostics["compression_issues"]))
+	with col3:
+		st.metric("Replication Issues", len(diagnostics["replication_issues"]))
+	
+	# 2. Compression Issues Summary
+	st.markdown("---")
+	st.markdown("### 🗜️ Compression Configuration Summary")
+	if diagnostics["compression_issues"]:
+		st.warning(f"⚠️ Found {len(diagnostics['compression_issues'])} without compression enabled")
+		with st.expander("📋 Collections without compression", expanded=False):
+			for issue in diagnostics["compression_issues"]:
+				st.markdown(f"- {issue}")
+			st.info("💡 **Recommendation:** Enable RQ, BQ, or PQ compression for better memory management")
+	else:
+		st.success("✅ All collections have compression properly configured")
+	
+	# 3. Replication Issues Summary
+	st.markdown("---")
+	st.markdown("### 🔄 Replication Configuration Summary")
+	if diagnostics["replication_issues"]:
+		st.error(f"🔴 Found {len(diagnostics['replication_issues'])} with replication issues")
+		with st.expander("⚠️ Collections with replication issues", expanded=False):
+			for issue in diagnostics["replication_issues"]:
+				st.markdown(f"- {issue}")
+			st.warning("💡 **Recommendations:**\n- Set `asyncEnabled` to `true` to improve consistency\n- Use `TimeBasedResolution` or `DeleteOnConflict` for deletion strategy\n- Use odd replication factors (3, 5, 7) for optimal RAFT consensus")
+	else:
+		st.success("✅ All collections have replication properly configured")
+	
+	# 4. Detailed Collection Diagnostics
+	st.markdown("---")
+	st.markdown("### 📑 Detailed Collection Diagnostics")
+	
+	# Filter options
+	filter_option = st.selectbox(
+		"Filter collections by status:",
+		["All Collections", "Only Issues", "Critical Issues Only", "Warnings Only"]
+	)
+	
+	for check in diagnostics["all_checks"]:
+		collection_name = check["collection"]
+		compression_status = check["compression"]["status"]
+		replication_status = check["replication"]["status"]
+		
+		# Apply filter
+		show_collection = False
+		if filter_option == "All Collections":
+			show_collection = True
+		elif filter_option == "Only Issues":
+			show_collection = (compression_status != "ok" or replication_status != "ok")
+		elif filter_option == "Critical Issues Only":
+			show_collection = (compression_status == "critical" or replication_status == "critical")
+		elif filter_option == "Warnings Only":
+			show_collection = (compression_status == "warning" or replication_status == "warning")
+		
+		if not show_collection:
+			continue
+		
+		# Determine overall status icon; keep all collections folded
+		if compression_status == "critical" or replication_status == "critical":
+			status_icon = "🔴"
+		elif compression_status == "warning" or replication_status == "warning":
+			status_icon = "⚠️"
+		else:
+			status_icon = "✅"
+		expanded = False
+		
+		with st.expander(f"{status_icon} **{collection_name}**", expanded=expanded):
+			# Compression details
+			st.markdown("##### 🗜️ Compression Configuration")
+			for detail in check["compression"]["details"]:
+				st.markdown(detail)
+			
+			# Replication details
+			st.markdown("##### 🔄 Replication Configuration")
+			for detail in check["replication"]["details"]:
+				st.markdown(detail)
+	
+	st.markdown("---")
+	st.markdown("### ✅ Diagnostics Complete")
+	st.info("💡 **Next Steps:** Review any critical or warning issues above and consider applying the recommended configurations.")
 			

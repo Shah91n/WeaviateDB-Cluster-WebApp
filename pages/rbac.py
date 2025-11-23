@@ -22,33 +22,33 @@ def main():
 
 		col1, col2, col3, col4 = st.columns(4)
 		with col1:
-			show_users = st.button("Users", use_container_width=True)
+			show_users = st.button("Users", width="stretch")
 		with col2:
-			show_roles = st.button("Roles", use_container_width=True)
+			show_roles = st.button("Roles", width="stretch")
 		with col3:
-			show_permissions = st.button("Permissions", use_container_width=True)
+			show_permissions = st.button("Permissions", width="stretch")
 		with col4:
-			show_combined = st.button("User Permissions Report", use_container_width=True)
+			show_combined = st.button("User Permissions Report", width="stretch")
 
 		if show_users:
 			df = list_all_users(client)
 			st.subheader("🫂 Users")
-			st.dataframe(df, use_container_width=True)
+			st.dataframe(df, width="stretch")
 			st.caption(f"Total Users: {len(df)}")
 		elif show_roles:
 			df = list_all_roles(client)
 			st.subheader("🎭 Roles")
-			st.dataframe(df, use_container_width=True)
+			st.dataframe(df, width="stretch")
 			st.caption(f"Total Roles: {len(df)}")
 		elif show_permissions:
 			df = list_all_permissions(client)
 			st.subheader("🔐 Permissions")
-			st.dataframe(df, use_container_width=True)
+			st.dataframe(df, width="stretch")
 			st.caption(f"Total Permission Entries: {len(df)}")
 		elif show_combined:
 			df = list_users_roles_permissions_combined(client)
 			st.subheader("📋 Users Permissions Report")
-			st.dataframe(df, use_container_width=True)
+			st.dataframe(df, width="stretch")
 			st.caption(f"Total User-Role Assignments: {len(df)}")
 		else:
 			st.info("Select one of the buttons above to view RBAC information.")

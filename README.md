@@ -18,6 +18,7 @@ Interact with and manage Weaviate Cluster operations. This app provides tools to
 - **Cloud**
 
 #### Vectorization
+- Weaviate Vectorizer
 - Support for OpenAI, Cohere, HuggingFace and JinaAI
 - Add API keys for vectorization providers (optional)
 - Vectorization during object updates
@@ -38,6 +39,7 @@ Interact with and manage Weaviate Cluster operations. This app provides tools to
   - View cluster metadata & modules
   - Analyze shard consistency
   - Force repair collection objects across nodes
+  - Run schema diagnostics
 
 ### RBAC
   - View all users and their roles
@@ -82,6 +84,17 @@ Interact with and manage Weaviate Cluster operations. This app provides tools to
   - Delete collections and tenants
   - Batch deletion support for multiple collections/tenants
 
+### Agent (QueryAgent)
+Ask natural language questions across one or more collections via the Agents API.
+
+Requirement: install the extra: `weaviate-client[agents]`.
+
+UI Flow:
+1. Open Agent page.
+2. Select one or multiple collections.
+3. Enter question + optional system prompt / host / timeout.
+4. Run and inspect Answer, Structured Sections.
+
 ## Configuration
 
 ### How to Run It on Your Local Machine
@@ -117,8 +130,10 @@ If you haven't already created a `requirements.txt` file, here's what it should 
 ```text
 streamlit
 weaviate-client
+weaviate-client[agents]
 requests
 pandas
+Pillow
 ```
 
 Or You can also run the Weaviate Cluster using Docker. Follow the steps below to build the Docker image and run the container:
