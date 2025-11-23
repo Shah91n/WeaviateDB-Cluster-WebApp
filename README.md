@@ -8,7 +8,7 @@ Interact with and manage Weaviate Cluster operations. This app provides tools to
   Visit Weaviate Cluster WebApp
 </a>
 
-<img width="1866" alt="image" src="https://github.com/user-attachments/assets/ece8825f-8588-4763-a23c-71059ecbb711" />
+<img width="1840" height="793" alt="image" src="https://github.com/user-attachments/assets/f15cc87a-b1b6-4d79-8964-0d2068760466" />
 
 ## Features
 
@@ -84,7 +84,7 @@ Interact with and manage Weaviate Cluster operations. This app provides tools to
   - Delete collections and tenants
   - Batch deletion support for multiple collections/tenants
 
-### Agent (QueryAgent)
+### Agent
 Ask natural language questions across one or more collections via the Agents API.
 
 Requirement: install the extra: `weaviate-client[agents]`.
