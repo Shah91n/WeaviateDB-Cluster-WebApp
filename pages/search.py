@@ -166,7 +166,7 @@ def display_results(success: bool, message: str, df, time_taken: float):
 			st.info(f"Query Time Taken: {time_taken/1000:.3f}s ({time_taken:.2f}ms - {time_taken/1000/60:.3f}m)")
 
 		if not df.empty:
-			st.dataframe(df, use_container_width=True)
+			st.dataframe(df, width="stretch")
 	else:
 		st.error(message)
 

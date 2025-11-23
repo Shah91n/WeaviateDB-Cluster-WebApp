@@ -35,7 +35,7 @@ def main():
 		st.session_state.collections_fetched = False
 
 	# Fetch button to load collections
-	if st.button("Fetch Collections List", use_container_width=True):
+	if st.button("Fetch Collections List", width="stretch"):
 		print("Fetch Collections List button clicked")
 		collections = list_all_collections(client)
 		# Handle both dict and list return types
@@ -93,7 +93,7 @@ def main():
 			st.session_state.query_results = None
 			st.session_state.current_page = 1
 
-		read_button = st.button("Read Objects", use_container_width=True)
+		read_button = st.button("Read Objects", width="stretch")
 
 		# Fetch data
 		if read_button or st.session_state.query_results is not None:
@@ -125,7 +125,7 @@ def main():
 						f"(Total items: {result['total_count']})")
 
 					# Display the data
-					st.dataframe(result["data"].astype(str), use_container_width=True)
+					st.dataframe(result["data"].astype(str), width="stretch")
 
 					# Pagination controls
 					col1, col2, col3, col4 = st.columns([1, 1, 1, 1])

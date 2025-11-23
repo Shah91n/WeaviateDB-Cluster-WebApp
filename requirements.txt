@@ -1,5 +1,6 @@
 streamlit
 weaviate-client
+weaviate-client[agents]
 requests
 pandas
 Pillow

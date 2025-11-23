@@ -1,6 +1,6 @@
 import streamlit as st
 from utils.connection.weaviate_client import initialize_client
-from utils.cluster.cluster_operations_handlers import action_check_shard_consistency, action_aggregate_collections_tenants, action_collections_configuration, action_metadata, action_nodes_and_shards, action_collection_schema, action_statistics, action_read_repairs
+from utils.cluster.cluster_operations_handlers import action_check_shard_consistency, action_aggregate_collections_tenants, action_collections_configuration, action_metadata, action_nodes_and_shards, action_collection_schema, action_statistics, action_read_repairs, action_diagnose
 from utils.sidebar.navigation import navigate
 from utils.connection.weaviate_connection import close_weaviate_client
 from utils.sidebar.helper import update_side_bar_labels, clear_session_state
@@ -203,7 +203,7 @@ if not st.session_state.client_ready:
     # --------------------------------------------------------------------------
     # Connect/Disconnect Buttons
     # --------------------------------------------------------------------------
-    if st.sidebar.button("Connect", use_container_width=True, type="secondary"):
+    if st.sidebar.button("Connect", width="stretch", type="secondary"):
         
         close_weaviate_client()
 
@@ -284,7 +284,7 @@ if not st.session_state.client_ready:
                     st.sidebar.error("Connection failed!")
     # print("DEBUG session_state (On Connect):", dict(st.session_state)) # uncomment during development to debug session state
 else:
-    if st.sidebar.button("Disconnect", use_container_width=True, type="primary"):
+    if st.sidebar.button("Disconnect", width="stretch", type="primary"):
         st.toast('Session, states and cache cleared! Weaviate client disconnected successfully!', icon='🔴')
         time.sleep(1)
         if st.session_state.get("client_ready"):
@@ -300,7 +300,6 @@ update_side_bar_labels()
 # Main Page Content (Cluster Operations)
 # --------------------------------------------------------------------------
 st.markdown("###### ⚠️ Important: This tool is designed and tested on the latest Weaviate DB version. Some features may not be compatible with older versions. Please ensure you are using the latest stable version of Weaviate DB for optimal performance.")
-st.markdown("###### Any function with (APIs) means it is run using RESTful endpoints. Otherwise, it is executed through the DB client.")
 st.markdown("Aggregation & Read Data is cached in the session state for an hour - to clear the cache either clear the cache in the Streamlit Developer Options or Disconnect then reconnect again.")
 
 # --------------------------------------------------------------------------
@@ -308,7 +307,7 @@ st.markdown("Aggregation & Read Data is cached in the session state for an hour 
 # --------------------------------------------------------------------------
 col1, col2, col3 = st.columns([1, 1, 1])
 col4, col5, col6 = st.columns([1, 1, 1])
-col7, col8 = st.columns([1,1])
+col7, col8, col9 = st.columns([1, 1, 1])
 
 # Dictionary: button name => action function
 button_actions = {
@@ -320,39 +319,44 @@ button_actions = {
     "metadata": lambda: action_metadata(st.session_state.active_endpoint, st.session_state.active_api_key),
     "check_shard_consistency": action_check_shard_consistency,
     "read_repairs": lambda: action_read_repairs(st.session_state.active_endpoint, st.session_state.active_api_key),
+    "diagnose": lambda: action_diagnose(st.session_state.active_endpoint, st.session_state.active_api_key),
 }
 
 with col1:
-    if st.button("Aggregate Collections & Tenants", use_container_width=True):
+    if st.button("Aggregate Collections & Tenants", width="stretch"):
         st.session_state["active_button"] = "aggregate_collections_tenants"
 
 with col2:
-    if st.button("Collection Properties", use_container_width=True):
+    if st.button("Collection Properties", width="stretch"):
         st.session_state["active_button"] = "collection_properties"
 
 with col3:
-    if st.button("Collections Configuration (APIs)", use_container_width=True):
+    if st.button("Collections Configuration", width="stretch"):
         st.session_state["active_button"] = "collections_configuration"
 
 with col4:
-    if st.button("Nodes & Shards", use_container_width=True):
+    if st.button("Nodes & Shards", width="stretch"):
         st.session_state["active_button"] = "nodes"
 
 with col5:
-    if st.button("Raft Statistics (APIs)", use_container_width=True):
+    if st.button("Raft Statistics", width="stretch"):
         st.session_state["active_button"] = "statistics"
 
 with col6:
-    if st.button("Metadata",use_container_width=True):
+    if st.button("Metadata",width="stretch"):
         st.session_state["active_button"] = "metadata"
 
 with col7:
-    if st.button("Check Shard Consistency For Repairs", use_container_width=True):
+    if st.button("Check Shard Consistency For Repairs", width="stretch"):
         st.session_state["active_button"] = "check_shard_consistency"
 
 with col8:
-    if st.button("Read Repair (APIs)", use_container_width=True):
+    if st.button("Read Repair", width="stretch"):
         st.session_state["active_button"] = "read_repairs"
+
+with col9:
+    if st.button("Diagnose", width="stretch"):
+        st.session_state["active_button"] = "diagnose"
 
 # --------------------------------------------------------------------------
 # Execute the active button's action

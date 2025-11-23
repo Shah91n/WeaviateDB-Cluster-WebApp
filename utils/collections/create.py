@@ -12,7 +12,7 @@ import re
 # Supported vectorizers
 def get_supported_vectorizers() -> List[str]:
 	print("get_supported_vectorizers() called")
-	return ["text2vec_openai", "text2vec_huggingface", "text2vec_cohere", "text2vec_jinaai", "BYOV"]
+	return ["text2vec_weaviate", "text2vec_openai", "text2vec_huggingface", "text2vec_cohere", "text2vec_jinaai", "BYOV"]
 
 # Validate file format
 def validate_file_format(file_content: str, file_type: str) -> tuple[bool, str, Optional[List[Dict[str, Any]]]]:
@@ -70,21 +70,22 @@ def create_collection(client: Client, collection_name: str, vectorizer: str) -> 
 			return False, key_message
 
 		# Configure vectorizer
-		if vectorizer == "text2vec_openai":
-			vectorizer_config = Configure.Vectorizer.text2vec_openai()
+		if vectorizer == "text2vec_weaviate":
+			vector_config = Configure.Vectors.text2vec_weaviate()
+		elif vectorizer == "text2vec_openai":
+			vector_config = Configure.Vectors.text2vec_openai()
 		elif vectorizer == "text2vec_huggingface":
-			vectorizer_config = Configure.Vectorizer.text2vec_huggingface()
+			vector_config = Configure.Vectors.text2vec_huggingface()
 		elif vectorizer == "text2vec_cohere":
-			vectorizer_config = Configure.Vectorizer.text2vec_cohere()
+			vector_config = Configure.Vectors.text2vec_cohere()
 		elif vectorizer == "text2vec_jinaai":
-			vectorizer_config = Configure.Vectorizer.text2vec_jinaai()
+			vector_config = Configure.Vectors.text2vec_jinaai()
 		elif vectorizer == "BYOV":
-			vectorizer_config = Configure.Vectorizer.none()
-
+			vector_config = Configure.Vectors.self_provided()
 		# Create collection
 		client.collections.create(
 			name=collection_name,
-			vectorizer_config=vectorizer_config,
+			vector_config=vector_config,
 			replication_config=Configure.replication(3)
 		)
 		return True, f"Collection '{collection_name}' created successfully"

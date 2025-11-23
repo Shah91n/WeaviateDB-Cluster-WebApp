@@ -131,9 +131,9 @@ def get_object_details():
 
 	col1, col2 = st.columns(2)
 	with col1:
-		fetch_object_clicked = st.button("Fetch The Object", use_container_width=True)
+		fetch_object_clicked = st.button("Fetch The Object", width="stretch")
 	with col2:
-		check_node_clicked = st.button("Check the Object on the Nodes (APIs)", use_container_width=True)
+		check_node_clicked = st.button("Check the Object on the Nodes (APIs)", width="stretch")
 
 	# Initialize session state for edit mode and object data
 	if 'edit_mode' not in st.session_state:
@@ -186,7 +186,7 @@ def get_object_details():
 	# Display object data if available
 	if st.session_state.object_display is not None:
 		st.markdown("### Object Data")
-		st.dataframe(st.session_state.object_display, use_container_width=True)
+		st.dataframe(st.session_state.object_display, width="stretch")
 
 		# Add Edit button below the table
 		if not st.session_state.edit_mode:
@@ -265,9 +265,9 @@ def get_object_details():
 					)
 			col1, col2 = st.columns(2)
 			with col1:
-				submitted = st.form_submit_button("Save Changes", use_container_width=True)
+				submitted = st.form_submit_button("Save Changes", width="stretch")
 			with col2:
-				cancel = st.form_submit_button("Cancel", use_container_width=True)
+				cancel = st.form_submit_button("Cancel", width="stretch")
 			if submitted:
 				try:
 					# Parse the values before updating
@@ -320,7 +320,7 @@ def get_object_details():
 			else:
 				data_object = find_object_in_collection_on_nodes(active_endpoint, active_api_key, collection_name, object_uuid)
 			node_df = data_object
-			st.dataframe(node_df, use_container_width=True)
+			st.dataframe(node_df, width="stretch")
 			st.text("✔ Found | ✖ Not Found | N/A The node does not exist (Hardcoded 11 nodes as maximum for now)")
 		except Exception as e:
 			st.error(f"An error occurred while checking the object on nodes: {e}")
@@ -345,12 +345,12 @@ def get_collection_configuration():
 			if 'edit_collection_mode' not in st.session_state:
 				st.session_state.edit_collection_mode = False
 			if not st.session_state.edit_collection_mode:
-				if st.button("Edit Collection", key="edit_collection_btn", use_container_width=True):
+				if st.button("Edit Collection", key="edit_collection_btn", width="stretch"):
 					st.session_state.edit_collection_mode = True
 					st.rerun()
 			else:
 				update_collection_config_ui(config)
-				if st.button("Cancel", key="cancel_edit_collection_btn", use_container_width=True):
+				if st.button("Cancel", key="cancel_edit_collection_btn", width="stretch"):
 					st.session_state.edit_collection_mode = False
 					st.rerun()
 		except Exception as e:
@@ -379,7 +379,7 @@ def update_collection_config_ui(config):
 	stopwords_preset_str = st.selectbox("Stopwords Preset", [e.name for e in StopwordsPreset], index=[e.name for e in StopwordsPreset].index(stopwords_preset.name if hasattr(stopwords_preset, 'name') else str(stopwords_preset)), key="stopwords_preset")
 	stopwords_add = st.text_input("Stopwords Additions (comma separated)", value=stopwords_add, key="stop_add")
 	stopwords_remove = st.text_input("Stopwords Removals (comma separated)", value=stopwords_remove, key="stop_remove")
-	if st.button("Update Description & Inverted Index", use_container_width=True, key="save_desc_inv"):
+	if st.button("Update Description & Inverted Index", width="stretch", key="save_desc_inv"):
 		try:
 			update_description_and_inverted_index(
 				st.session_state.client,
@@ -409,7 +409,7 @@ def update_collection_config_ui(config):
 	allowed_deletion_strategies = ["DELETE_ON_CONFLICT", "NO_AUTOMATED_RESOLUTION", "TIME_BASED_RESOLUTION"]
 	deletion_strategy_str = st.selectbox("Deletion Strategy", allowed_deletion_strategies, index=allowed_deletion_strategies.index(deletion_strategy.name if deletion_strategy else "DELETE_ON_CONFLICT"), key="del_strategy")
 	async_enabled = st.checkbox("Async Enabled", value=bool(async_enabled), key="async_enabled")
-	if st.button("Update Multi-tenancy & Replication", use_container_width=True, key="save_multi_repl"):
+	if st.button("Update Multi-tenancy & Replication", width="stretch", key="save_multi_repl"):
 		try:
 			update_multi_tenancy_and_replication(
 				st.session_state.client,
@@ -438,7 +438,7 @@ def update_collection_config_ui(config):
 	filter_strategy_str = st.selectbox("Filter Strategy", [e.name for e in VectorFilterStrategy], index=[e.name for e in VectorFilterStrategy].index(filter_strategy.name if filter_strategy else "SWEEPING"), key="filter_strategy")
 	flat_search_cutoff = st.number_input("Flat Search Cutoff", value=int(flat_search_cutoff), min_value=0, key="fsc")
 	vector_cache_max_objects = st.number_input("Vector Cache Max Objects", value=int(vector_cache_max_objects), min_value=0, key="vcmo")
-	if st.button("Update HNSW Vector Index", use_container_width=True, key="save_hnsw"):
+	if st.button("Update HNSW Vector Index", width="stretch", key="save_hnsw"):
 		try:
 			update_hnsw_vector_index(
 				st.session_state.client,
@@ -480,7 +480,7 @@ def update_collection_config_ui(config):
 	encoder_distribution_name = pq_encoder_distribution.name if hasattr(pq_encoder_distribution, 'name') else str(pq_encoder_distribution)
 	pq_encoder_type_str = st.selectbox("PQ Encoder Type", [e.name for e in PQEncoderType], index=[e.name for e in PQEncoderType].index(encoder_type_name), key="pq_enc_type")
 	pq_encoder_distribution_str = st.selectbox("PQ Encoder Distribution", [e.name for e in PQEncoderDistribution], index=[e.name for e in PQEncoderDistribution].index(encoder_distribution_name), key="pq_enc_dist")
-	if st.button("Update PQ Quantizer", use_container_width=True, key="save_pq"):
+	if st.button("Update PQ Quantizer", width="stretch", key="save_pq"):
 		try:
 			update_pq_quantizer(
 				st.session_state.client,

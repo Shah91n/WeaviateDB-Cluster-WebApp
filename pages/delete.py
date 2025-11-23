@@ -28,7 +28,7 @@ def handle_collection_selection():
 		# Always show warning and delete button
 		st.warning("WARNING: This is a DELETE operation to the database and cannot be undone. Please ensure you are connected with admin privileges.", icon="⚠️")
 
-		if st.button("🗑️ Delete Selected Collections", type="primary", use_container_width=True):
+		if st.button("🗑️ Delete Selected Collections", type="primary", width="stretch"):
 			if len(st.session_state.selected_collections) == 0:
 				st.error("Please select at least one collection to delete")
 			else:
@@ -75,7 +75,7 @@ def handle_mt_collection_selection():
 		# Always show warning and delete button
 		st.warning("WARNING: This is a DELETE operation to the database and cannot be undone. Please ensure you are connected with admin privileges.", icon="⚠️")
 
-		if st.button("🗑️ Delete Selected Tenants", type="primary", use_container_width=True):
+		if st.button("🗑️ Delete Selected Tenants", type="primary", width="stretch"):
 			if not any(st.session_state.selected_tenants.values()):
 				st.error("Please select at least one tenant to delete")
 			else:

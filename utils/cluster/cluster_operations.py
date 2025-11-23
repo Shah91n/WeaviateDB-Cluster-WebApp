@@ -3,6 +3,151 @@ import pandas as pd
 from collections import defaultdict
 import streamlit as st
 
+# Diagnose schema configuration
+def diagnose_schema(cluster_url, api_key):
+    print("diagnose_schema() called")
+    try:
+        url = f"{cluster_url}/v1/schema"
+        headers = {"Authorization": f"Bearer {api_key}"}
+        response = requests.get(url, headers=headers)
+        response.raise_for_status()
+        schema = response.json()
+        
+        collections = schema.get("classes", [])
+        collection_count = len(collections)
+        
+        # Storage for diagnostics
+        diagnostics = {
+            "collection_count": collection_count,
+            "collection_count_status": "ok",
+            "collection_count_message": "",
+            "compression_issues": [],
+            "replication_issues": [],
+            "all_checks": []
+        }
+        
+        # 1. Check collection count
+        if collection_count > 1000:
+            diagnostics["collection_count_status"] = "critical"
+            diagnostics["collection_count_message"] = f"🔴 CRITICAL: {collection_count} collections detected! This seems to be a Multi-Tenancy case and to be reviewed immediately."
+        elif collection_count > 100:
+            diagnostics["collection_count_status"] = "warning"
+            diagnostics["collection_count_message"] = f"⚠️ WARNING: {collection_count} collections detected. This seems to be a Multi-Tenancy case."
+        else:
+            diagnostics["collection_count_message"] = f"✅ OK: {collection_count} collections detected."
+        
+        # 2 & 3. Check each collection's configuration
+        for cls in collections:
+            collection_name = cls.get("class", "Unknown")
+            collection_diagnostics = {
+                "collection": collection_name,
+                "compression": {"status": "ok", "details": []},
+                "replication": {"status": "ok", "details": []}
+            }
+            
+            # Compression check: prioritize vectorConfig, then fallback to vectorIndexConfig
+            vector_index_config = cls.get("vectorIndexConfig", {})
+            vector_config = cls.get("vectorConfig", {})
+
+            compression_found = False
+
+            # Prefer named vectors (vectorConfig)
+            if vector_config:
+                for vector_name, vector_details in vector_config.items():
+                    vec_index_config = vector_details.get("vectorIndexConfig", {})
+                    rq = vec_index_config.get("rq", {}).get("enabled", False)
+                    bq = vec_index_config.get("bq", {}).get("enabled", False)
+                    pq = vec_index_config.get("pq", {}).get("enabled", False)
+
+                    if rq or bq or pq:
+                        compression_found = True
+                        enabled_types = []
+                        if rq: enabled_types.append("RQ")
+                        if bq: enabled_types.append("BQ")
+                        if pq: enabled_types.append("PQ")
+                        collection_diagnostics["compression"]["details"].append(
+                            f"✅ vectorConfig['{vector_name}']: Compression enabled ({', '.join(enabled_types)})"
+                        )
+                    else:
+                        collection_diagnostics["compression"]["status"] = "warning"
+                        collection_diagnostics["compression"]["details"].append(
+                            f"⚠️ vectorConfig['{vector_name}']: No compression enabled (enable RQ/BQ/PQ)"
+                        )
+                        diagnostics["compression_issues"].append(f"{collection_name} (vectorConfig: {vector_name})")
+
+            # Fallback to single vector config only if no vectorConfig defined
+            elif vector_index_config:
+                rq = vector_index_config.get("rq", {}).get("enabled", False)
+                bq = vector_index_config.get("bq", {}).get("enabled", False)
+                pq = vector_index_config.get("pq", {}).get("enabled", False)
+
+                if rq or bq or pq:
+                    compression_found = True
+                    enabled_types = []
+                    if rq: enabled_types.append("RQ")
+                    if bq: enabled_types.append("BQ")
+                    if pq: enabled_types.append("PQ")
+                    collection_diagnostics["compression"]["details"].append(
+                        f"✅ Compression enabled: {', '.join(enabled_types)}"
+                    )
+                else:
+                    collection_diagnostics["compression"]["status"] = "warning"
+                    collection_diagnostics["compression"]["details"].append(
+                        "⚠️ No compression enabled (RQ/BQ/PQ). Consider enabling for better memory management."
+                    )
+                    diagnostics["compression_issues"].append(collection_name)
+
+            # If no compression config found at all
+            if not vector_config and not vector_index_config:
+                collection_diagnostics["compression"]["status"] = "info"
+                collection_diagnostics["compression"]["details"].append("ℹ️ No vector configuration found")
+            
+            # Check replication configuration
+            replication_config = cls.get("replicationConfig", {})
+            if replication_config:
+                # Check asyncEnabled
+                async_enabled = replication_config.get("asyncEnabled", False)
+                if not async_enabled:
+                    collection_diagnostics["replication"]["status"] = "critical"
+                    collection_diagnostics["replication"]["details"].append(
+                        "🔴 CRITICAL: asyncEnabled is FALSE - Async replication not enabled; can cause consistency issues. Set to TRUE."
+                    )
+                    diagnostics["replication_issues"].append(f"{collection_name} (async)"
+                    )
+                else:
+                    collection_diagnostics["replication"]["details"].append("✅ asyncEnabled is TRUE (correct)")
+                
+                # Check deletionStrategy
+                deletion_strategy = replication_config.get("deletionStrategy", "")
+                if deletion_strategy == "NoAutomatedResolution":
+                    collection_diagnostics["replication"]["status"] = "critical" if collection_diagnostics["replication"]["status"] != "critical" else "critical"
+                    collection_diagnostics["replication"]["details"].append("🔴 CRITICAL: deletionStrategy is 'NoAutomatedResolution' - Deletes are not handled! Should be 'TimeBasedResolution' or 'DeleteOnConflict'.")
+                    diagnostics["replication_issues"].append(f"{collection_name} (deletion)")
+                elif deletion_strategy in ["TimeBasedResolution", "DeleteOnConflict"]:
+                    collection_diagnostics["replication"]["details"].append(f"✅ deletionStrategy is '{deletion_strategy}' (correct)")
+                else:
+                    collection_diagnostics["replication"]["details"].append(f"ℹ️ deletionStrategy: {deletion_strategy if deletion_strategy else 'Not specified'}")
+                
+                # Check replication factor
+                replication_factor = replication_config.get("factor", 1)
+                if replication_factor == 1:
+                    collection_diagnostics["replication"]["status"] = "warning" if collection_diagnostics["replication"]["status"] == "ok" else collection_diagnostics["replication"]["status"]
+                    collection_diagnostics["replication"]["details"].append("⚠️ WARNING: Replication factor is 1 (no replication)")
+                elif replication_factor % 2 == 0:
+                    collection_diagnostics["replication"]["status"] = "warning" if collection_diagnostics["replication"]["status"] == "ok" else collection_diagnostics["replication"]["status"]
+                    collection_diagnostics["replication"]["details"].append(f"⚠️ WARNING: Replication factor is {replication_factor} (even number). RAFT consensus works best with odd numbers (3, 5, 7).")
+                else:
+                    collection_diagnostics["replication"]["details"].append(f"✅ Replication factor is {replication_factor} (optimal for RAFT)")
+            else:
+                collection_diagnostics["replication"]["details"].append("ℹ️ No replication configuration found")
+            
+            diagnostics["all_checks"].append(collection_diagnostics)
+        
+        return diagnostics
+        
+    except requests.exceptions.RequestException as e:
+        return {"error": f"Failed to fetch schema for diagnostics: {e}"}
+
 # Get shards information
 def get_shards_info(client):
     print("get_shards_info() called")
